@@ -1,0 +1,84 @@
+#############################################################################
+# PROVIDER
+#############################################################################
+
+provider "aws" {
+  region  = var.region
+  alias   = "peer"
+  profile = "infra"
+  # Assume peering role in the security account
+  # so we can accept the peering connection for this provider
+  assume_role {
+    role_arn = aws_iam_role.peer_role.arn
+  }
+
+}
+
+#############################################################################
+# DATA SOURCES
+#############################################################################
+
+data "aws_caller_identity" "peer" {
+  provider = aws.peer
+
+}
+
+#############################################################################
+# RESOURCES
+#############################################################################
+
+# Create the peering connection
+
+resource "aws_vpc_peering_connection" "peer" {
+  # source vpc (dev), it is reaching out to make that peering connection
+  vpc_id      = module.vpc_dev.vpc_id
+  # destination vpc (security) we wants to peer with
+  peer_vpc_id = module.vpc_sec.vpc_id
+  # owner id of security account
+  peer_owner_id = data.aws_caller_identity.peer.account_id
+  peer_region   = var.region
+  auto_accept   = false
+
+  tags = {
+    Side = "Requester"
+  }
+}
+
+resource "aws_vpc_peering_connection_accepter" "peer" {
+  # accept connection created above using assumed role
+  provider                  = aws.peer
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+  auto_accept               = true
+
+  tags = {
+    Side = "Accepter"
+  }
+}
+
+#############################################################################
+# OUTPUTS
+#############################################################################
+
+output "x_peer_owner_account_id" {
+  value = data.aws_caller_identity.peer.account_id
+}
+
+output "x_peering_connection_accepter_id" {
+  value = aws_vpc_peering_connection_accepter.peer.vpc_id
+}
+
+output "x_peering_connection_accepter_region" {
+  value = aws_vpc_peering_connection_accepter.peer.peer_region
+}
+
+output "x_peering_connection_id" {
+  value = aws_vpc_peering_connection.peer.id
+}
+
+output "x_peering_connection_requester_account_id" {
+  value = aws_vpc_peering_connection_accepter.peer.peer_owner_id
+}
+
+output "x_peering_connection_requester_id" {
+  value = aws_vpc_peering_connection_accepter.peer.peer_vpc_id
+}
