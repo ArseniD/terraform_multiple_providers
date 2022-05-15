@@ -7,15 +7,14 @@ variable "region" {
   default = "us-east-1"
 }
 
-#Bucket variables
 variable "aws_bucket_prefix" {
   type    = string
-  default = "terra-aws"
+  default = "state-bucket"
 }
 
 variable "aws_dynamodb_table" {
   type    = string
-  default = "terra-aws-tfstatelock"
+  default = "dynamodb-lock-table"
 }
 
 variable "full_access_users" {
@@ -123,62 +122,62 @@ resource "aws_iam_group_policy" "full_access" {
   name  = "${local.bucket_name}-full-access"
   group = aws_iam_group.bucket_full_access.id
 
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": "s3:*",
-            "Resource": [
-                "arn:aws:s3:::${local.bucket_name}",
-                "arn:aws:s3:::${local.bucket_name}/*"
-            ]
-        },
-                {
-            "Effect": "Allow",
-            "Action": ["dynamodb:*"],
-            "Resource": [
-                "${aws_dynamodb_table.terraform_statelock.arn}"
-            ]
-        }
-   ]
-}
-EOF
+  policy = <<-EOF
+  {
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Effect": "Allow",
+              "Action": "s3:*",
+              "Resource": [
+                  "arn:aws:s3:::${local.bucket_name}",
+                  "arn:aws:s3:::${local.bucket_name}/*"
+              ]
+          },
+                  {
+              "Effect": "Allow",
+              "Action": ["dynamodb:*"],
+              "Resource": [
+                  "${aws_dynamodb_table.terraform_statelock.arn}"
+              ]
+          }
+     ]
+  }
+  EOF
 }
 
 resource "aws_iam_group_policy" "read_only" {
   name  = "${local.bucket_name}-read-only"
   group = aws_iam_group.bucket_read_only.id
 
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:Get*",
-                "s3:List*"
-            ],
-            "Resource": [
-                "arn:aws:s3:::${local.bucket_name}",
-                "arn:aws:s3:::${local.bucket_name}/*"
-            ]
-        }
-   ]
-}
-EOF
+  policy = <<-EOF
+  {
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Effect": "Allow",
+              "Action": [
+                  "s3:Get*",
+                  "s3:List*"
+              ],
+              "Resource": [
+                  "arn:aws:s3:::${local.bucket_name}",
+                  "arn:aws:s3:::${local.bucket_name}/*"
+              ]
+          }
+     ]
+  }
+  EOF
 }
 
 ##################################################################################
 # OUTPUT
 ##################################################################################
 
-output "s3_bucket" {
+output "bucket_name" {
   value = aws_s3_bucket.state_bucket.bucket
 }
 
-output "dynamodb_statelock" {
+output "dynamodb_table_name" {
   value = aws_dynamodb_table.terraform_statelock.name
 }
